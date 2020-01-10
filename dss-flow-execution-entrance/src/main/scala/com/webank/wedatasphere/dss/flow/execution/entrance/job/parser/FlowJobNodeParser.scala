@@ -40,14 +40,18 @@ import org.springframework.stereotype.Component
 @Order(2)
 @Component
 class FlowJobNodeParser extends FlowEntranceJobParser with Logging{
-
+  //flowEntranceJob--->FlowContext-->pendingNodeMap集合 (key ->nodeName, value->nodeRunner),nodeRunner对象中又
+  //拥有flowEntranceJob(作为监听器存在)  形成依赖循环
   override def parse(flowEntranceJob: FlowEntranceJob): Unit = {
     info(s"${flowEntranceJob.getId} Start to parse node of flow")
+    //获取上一步解析的schedulerProject和schedulerFlow
     val project = flowEntranceJob.getDwsProject
     val flow = flowEntranceJob.getFlow
+    //获取flowContext  其实只是new FlowContextImpl 新的对象
     val flowContext = flowEntranceJob.getFlowContext
     if(null == flow) throw new FlowExecutionErrorException(90101, "This fow of job is empty ")
     val nodes = flow.getSchedulerNodes
+    //遍历nodes
     for (node <- nodes) {
 
       val nodeName = node.getName
@@ -83,11 +87,14 @@ class FlowJobNodeParser extends FlowEntranceJobParser with Logging{
       flowNameAndResources.put("flow." + flow.getName + LinkisJobExecutionConfiguration.RESOURCES_NAME, FlowExecutionUtils.resourcesAdaptation(flow.getFlowResources))
       params.put(FLOW_RESOURCES, flowNameAndResources)
 
-      val pendingNodeMap = flowContext.getPendingNodes
-
+      val pendingNodeMap = flowContext.getPendingNodes//pendingNodeMap 在开始执行的时候是空的map
+      //就是new DefaultNodeRunner
       val nodeRunner = pendingNodeMap.getOrDefault(nodeName, new DefaultNodeRunner)
+      //将job对象放入nodeRunner中(作为监听器存在),所有nodeRunner中flowEntranceJob(监听器)对象都是同一个
       nodeRunner.setNodeRunnerListener(flowEntranceJob)
+      //设置node对象
       nodeRunner.setNode(node)
+      //将nodeName -->nodeRunner  放入pendingNodeMap中,就是flowContexe中
       pendingNodeMap.put(nodeName, nodeRunner)
     }
     info(s"${flowEntranceJob.getId} finished to parse node of flow")

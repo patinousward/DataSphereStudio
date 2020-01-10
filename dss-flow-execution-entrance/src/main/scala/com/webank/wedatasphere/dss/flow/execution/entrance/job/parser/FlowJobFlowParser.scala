@@ -35,7 +35,7 @@ import org.springframework.stereotype.Component
 import scala.collection.JavaConversions._
 
 
-@Order(1)
+@Order(1) //先解析
 @Component
 class FlowJobFlowParser extends FlowEntranceJobParser with Logging {
 
@@ -50,25 +50,25 @@ class FlowJobFlowParser extends FlowEntranceJobParser with Logging {
   override def parse(flowEntranceJob: FlowEntranceJob): Unit = {
     info(s"${flowEntranceJob.getId} start to parse flow")
     val code = flowEntranceJob.jobToExecuteRequest().code
+    //将前台的请求参数 反序列化
     val flowExecutionCode = LinkisJobExecutionUtils.gson.fromJson(code, classOf[FlowExecutionCode])
-
+    //rpc请求,获取当前flow,以及它的所有父flow
     getDWSProjectByCode(flowExecutionCode) match {
       case dwsProject: DWSProject =>
-
+        //parse和tunning后,将dwsProject转为schedulerproject
         val project = this.flowExecutionProjectParser.parseProject(dwsProject)
-
         this.flowExecutionProjectTuning.tuningSchedulerProject(project)
 
+        //获取所有的flowallFlows
         val allFlows = project.asInstanceOf[AbstractSchedulerProject].getProjectVersions.head.getFlows
 
-
-        var dwsFlow: SchedulerFlow = null
+        var dwsFlow: SchedulerFlow = null //根据id,获取到当前执行的flow
         for (flow <- allFlows) {
           if (flowExecutionCode.getFlowId == flow.getId) {
             dwsFlow = flow
           }
         }
-        //save dwsProject
+        //先保存dwsProject对象
         flowEntranceJob.setDwsProject(dwsProject)
         //set flow
         flowEntranceJob.setFlow(dwsFlow)

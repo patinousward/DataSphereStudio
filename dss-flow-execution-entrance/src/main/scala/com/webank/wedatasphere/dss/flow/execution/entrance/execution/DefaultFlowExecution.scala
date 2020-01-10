@@ -48,28 +48,34 @@ class DefaultFlowExecution extends FlowExecution with Logging {
   override def runJob(flowEntranceJob: FlowEntranceJob): Unit = {
 
     info(s"${flowEntranceJob.getId} Start to run executable node")
+    //获取处于scheduler状态的node
     val scheduledNodes = flowEntranceJob.getFlowContext.getScheduledNodes
 
     if( ! scheduledNodes.isEmpty) {
       // get executableNodes
       flowEntranceJob.getFlowContext synchronized{
         val runners = new ArrayBuffer[NodeRunner]()
+        //将scheduledNodes 添加进入runners 数组中(这里顺序不重要,能在scheduler状态的都是可以并行的)
         runners.addAll(scheduledNodes.values())
         val runningNodes = new ArrayBuffer[NodeRunner]()
         runners.foreach{ runner =>
           if ( ! FlowExecutionUtils.isSkippedNode(runner.getNode)){
+            //如果不是skipNode类型(这里只有子工作流是)
             info(s"scheduled node ${runner.getNode.getName} to running")
+            //翻转状态为running
             runner.fromScheduledTunToState(NodeExecutionState.Running)
-            // submit node runner
+            // 添加到runningNodes集合中
             runningNodes.add(runner)
           } else {
+            //如果是子工作了,就直接将状态翻转为Skipped(skip也是完成状态)
             info(s"This node ${runner.getNode.getDWSNode.getName} Skipped in execution")
             runner.fromScheduledTunToState(NodeExecutionState.Skipped)
           }
         }
         info(s"${flowEntranceJob.getId} Submit nodes(${runningNodes.size}) to running")
         runningNodes.foreach{ node =>
-          node.run()
+          node.run() //提交linkis去执行
+          //放入nodeRunnerQueue
           nodeRunnerQueue.put(node)
           if (pollerCount < FlowExecutionEntranceConfiguration.NODE_STATUS_POLLER_THREAD_SIZE.getValue){
             scheduledThreadPool.scheduleAtFixedRate(new NodeExecutionStatusPoller(nodeRunnerQueue), 1,

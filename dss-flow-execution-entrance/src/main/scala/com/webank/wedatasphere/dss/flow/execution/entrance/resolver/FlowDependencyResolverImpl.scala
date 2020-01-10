@@ -39,15 +39,20 @@ class FlowDependencyResolverImpl extends FlowDependencyResolver with Logging {
 
     val flowContext: FlowContext = flowJob.getFlowContext
     val nodes  = flowContext.getPendingNodes.toMap.values.map(_.getNode)
-
+    //父类所有节点都已经完成的判断,循环遍历所有的父类,并且他们的状态是skip 或则 成功,或者失败
     def  isAllParentDependencyCompleted(parents:util.List[String]): Boolean = {
       for (parent <- parents){
         if( ! flowContext.isNodeCompleted(parent)) return false
       }
       true
     }
+    //目前为止,nodes只是一个顺序集合,其顺序也不能代表任何工作了的依赖信息
     nodes.foreach{ node =>
       val nodeName = node.getName
+      //判断当前节点是否可以执行
+      //1. PendingNodes 中有这个节点(工作流中的节点名不能重复(这是前台保存时做的修改和判断))
+      //2.节点并非处于完成状态
+      //3. 它的父节点都执行完成了
       def isCanExecutable: Boolean = {
         (flowContext.getPendingNodes.containsKey(nodeName)
           && !FlowContext.isNodeRunning(nodeName, flowContext)
@@ -55,6 +60,7 @@ class FlowDependencyResolverImpl extends FlowDependencyResolver with Logging {
           && isAllParentDependencyCompleted(node.getDependencys))
       }
       if (isCanExecutable) flowContext synchronized {
+        //将满足当前节点的NodeRunnaer状态init 转换为scheduler,一般来说,第一次执行只有并发的第一个节点是被进行转化的
         if (isCanExecutable) flowContext.getPendingNodes.get(nodeName).tunToScheduled()
       }
     }

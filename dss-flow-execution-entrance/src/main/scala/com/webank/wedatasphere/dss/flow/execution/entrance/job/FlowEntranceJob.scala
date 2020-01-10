@@ -98,6 +98,7 @@ class FlowEntranceJob extends EntranceExecutionJob with NodeRunnerListener {
         printLog(s"node($nodeName) has skipped execution from $fromState", "WARN")
         FlowContext.changedNodeState(this.getFlowContext.getScheduledNodes, this.getFlowContext.getSkippedNodes, node, "node has skipped")
         //Trigger the next execution
+        //工作流在这里继续执行
         this.STATUS_CHANGED_LOCK.synchronized {
           getExecutor.execute(jobToExecuteRequest())
         }
@@ -106,6 +107,7 @@ class FlowEntranceJob extends EntranceExecutionJob with NodeRunnerListener {
         if (NodeExecutionState.isRunning(fromState))
           FlowContext.changedNodeState(this.getFlowContext.getRunningNodes, this.getFlowContext.getSucceedNodes, node, "node execute success")
         //Trigger the next execution
+        //工作流在这里继续执行
         this.STATUS_CHANGED_LOCK.synchronized {
           getExecutor.execute(jobToExecuteRequest())
         }

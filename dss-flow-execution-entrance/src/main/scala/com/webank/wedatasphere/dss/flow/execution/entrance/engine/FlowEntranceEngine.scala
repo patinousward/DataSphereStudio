@@ -69,7 +69,8 @@ class FlowEntranceEngine extends EntranceEngine(id = 0) with ConcurrentTaskOpera
               return SuccessExecuteResponse()
             }
             Utils.tryCatch {
-              if (null == job.getFlow) {
+              //job中的flow是SchedulerFlow,目前尚未进行解析,所以一般是null
+              if (null == job.getFlow) {  //触发执行下个节点的时候,这里是非null的了,不需要再解析一次
                 Utils.tryCatch{
                   for (flowParser <- flowParsers) {
                     flowParser.parse(job)
@@ -78,9 +79,12 @@ class FlowEntranceEngine extends EntranceEngine(id = 0) with ConcurrentTaskOpera
                    throw new FlowExecutionErrorException(90101, s"Failed to parser flow of job(${job.getId})", t)
                 }
               }
+              //解析job中flow的依赖关系
               for (flowDependencyResolver <- flowDependencyResolvers) {
+                //这里触发下次执行的时候,重新将下游节点进行翻转,工作流得以继续执行
                 flowDependencyResolver.resolvedFlow(job)
               }
+              //提交执行
               flowExecution.runJob(job)
             } { t =>
               job.kill()

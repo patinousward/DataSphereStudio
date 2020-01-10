@@ -74,10 +74,11 @@ abstract class NodeRunner extends Runnable with Logging{
   def getStartTime(): Long
 
   def setStartTime(startTime: Long): Unit
-
+  //NodeRunner进行状态转化的时候,会触发FloEntranceJob中的状态转化
   protected def transitionState(toState: NodeExecutionState): Unit = Utils.tryAndWarn{
     if (getStatus == toState) return
     info(s"from state $getStatus to $toState")
+    //会触发FloEntranceJob中的状态转化
     this.getNodeRunnerListener.onStatusChanged(getStatus, toState, this.getNode)
     this.setStatus(toState)
   }

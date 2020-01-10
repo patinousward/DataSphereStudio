@@ -64,7 +64,10 @@ class DefaultNodeRunner extends NodeRunner with Logging {
   }
 
   override def isLinkisJobCompleted: Boolean = Utils.tryCatch{
+    //当linkisjob执行成功后(或者失败后),NodeRunner这边的状态肯定还是running的,这里走false
     if(NodeExecutionState.isCompleted(getStatus)) return true
+    //这个方法中进行翻转成功,亦或者job在engine那边执行失败
+    //这里查询linkisjob的状态,并且未完成的话,就会去查询并且翻转荒唐
     val toState = NodeExecutionState.withName(LinkisNodeExecutionImpl.getLinkisNodeExecution.getState(this.linkisJob))
     if (NodeExecutionState.isCompleted(toState)) {
       val listener = LinkisNodeExecutionImpl.getLinkisNodeExecution.asInstanceOf[LinkisExecutionListener]
@@ -91,16 +94,19 @@ class DefaultNodeRunner extends NodeRunner with Logging {
         case propsMap: util.Map[String, String] => propsMap
         case _ => new util.HashMap[String, String]()
       }
+      //创建一个linkisJob对象,给this.linkisJob赋值
       this.linkisJob = AppJointJobBuilder.builder().setNode(node).setJobProps(jobProps).build.asInstanceOf[LinkisJob]
       this.linkisJob.setLogObj(new FlowExecutionLog(this))
       //set start time
       this.setStartTime(System.currentTimeMillis())
       if (JobTypeEnum.EmptyJob == this.linkisJob.getJobType) {
+        //空节点直接不执行,返回成功
         warn("This node is empty type")
         this.transitionState(NodeExecutionState.Succeed)
         return
       }
-
+      //正真提交执行的地方,其实只是使用ujesclient去http请求linkis,这里应该是阻塞的,但是Entranc的execute接口,提交scheduler后
+      //就会返回id了,勉强算异步
       LinkisNodeExecutionImpl.getLinkisNodeExecution.runJob(this.linkisJob)
       info(s"Finished to run node of ${node.getName}")
       /*LinkisNodeExecutionImpl.getLinkisNodeExecution.waitForComplete(this.linkisJob)
@@ -110,6 +116,8 @@ class DefaultNodeRunner extends NodeRunner with Logging {
       this.transitionState(NodeExecutionState.withName(toState))
       info(s"Finished to execute node of ${node.getName}")*/
     } catch {
+          //这里的异常翻转失败只是提交job到scheduler执行失败,如果是job本身在engine中执行失败呢?
+          //答案在isLinkisJobCompleted 方法中,这个方法被定时器不断调用
       case t: Throwable =>
         warn(s"Failed to execute node of ${node.getName}", t)
         this.transitionState(NodeExecutionState.Failed)

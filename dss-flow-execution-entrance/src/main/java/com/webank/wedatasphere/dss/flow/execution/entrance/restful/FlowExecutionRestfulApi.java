@@ -58,6 +58,7 @@ public class FlowExecutionRestfulApi {
 
     @GET
     @Path("/{id}/execution")
+    //获取节点状态的接口,这个节点的状态并非和linkis中执行的job的状态是一致的
     public Response execution(@PathParam("id") String id) {
         Message message = null;
         String realId = ZuulEntranceUtils.parseExecID(id)[3];

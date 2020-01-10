@@ -33,7 +33,7 @@ class NodeExecutionStatusPoller(nodeRunnerQueue: LinkedBlockingQueue[NodeRunner]
   override def run(): Unit = {
 
     val runner = nodeRunnerQueue.take()
-
+    //定时器会主动取出来,如果已经完成,就取出,如果没完成就继续放回去
     if(! runner.isLinkisJobCompleted) {
       nodeRunnerQueue.put(runner)
     } else {
