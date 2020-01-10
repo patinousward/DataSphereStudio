@@ -71,6 +71,7 @@ public class CommonAppJointLoader implements AppJointLoader{
         if (params == null) {
             params = new HashMap<String, Object>();
         }
+        //获取当前线程的类加载器
         ClassLoader oldClassLoader = Thread.currentThread().getContextClassLoader();
         ClassLoader newClassLoader = null;
         synchronized (classLoaders){

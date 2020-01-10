@@ -37,7 +37,7 @@ class AppJointLoaderFactory {
 
 
      static AppJointLoader getAppJointLoader(){
-        if (appJointLoader == null){
+        if (appJointLoader == null){ //单例的appJointLoader 生成
             synchronized (AppJointLoaderFactory.class){
                 if (appJointLoader == null){
                     String className = AppJointLoaderConf.CLASS_LOADER_CLASS_NAME().getValue();
@@ -48,6 +48,7 @@ class AppJointLoaderFactory {
                             logger.warn("can not get class {}", className, e);
                         }
                         try {
+                            //反射创建CommonAppJointLoader
                             appJointLoader = clazz.newInstance();
                         } catch (Exception e) {
                             logger.error("can not initialize class", e);

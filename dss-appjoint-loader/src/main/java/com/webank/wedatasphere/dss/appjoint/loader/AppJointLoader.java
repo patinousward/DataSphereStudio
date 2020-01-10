@@ -50,7 +50,8 @@ public interface AppJointLoader {
 
     AppJoint getAppJoint(String baseUrl, String appJointName, Map<String, Object> params) throws Exception;
 
-
+    //AppJointLoader.getAppJointLoader().getAppJoint
+    //loader模块堆外暴露的接口调用方式
     static AppJointLoader getAppJointLoader(){
         return AppJointLoaderFactory.getAppJointLoader();
     }
