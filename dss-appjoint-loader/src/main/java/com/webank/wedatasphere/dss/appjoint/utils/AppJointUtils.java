@@ -61,7 +61,10 @@ public class AppJointUtils {
         boolean flag = false;
         String appjoint = null;
         for (String jar : jars){
+            //这里的jar是path类型的，而非参数中写的jarName，应该是jarPath更合适
+            //获取到全类名（替换/ 为.的形式）
             for(String clazzName : getClassNameFrom(jar)){
+                //判断是否是Appjoint.class 的子类
                 if (isChildClass(clazzName, PARENT_CLASS, classLoader)){
                     flag = true;
                     appjoint = clazzName;
@@ -84,6 +87,7 @@ public class AppJointUtils {
         List<String> jars = new ArrayList<>();
         if (file.listFiles() != null){
             for(File f : file.listFiles()){
+                //以jar结尾，以dss开头的jar包
                 if (!f.isDirectory() && f.getName().endsWith(AppJointLoader.JAR_SUF_NAME) && f.getName().startsWith("dss")){
                     jars.add(f.getPath());
                 }
@@ -98,6 +102,7 @@ public class AppJointUtils {
         List<URL> jars = new ArrayList<>();
         if (file.listFiles() != null){
             for(File f : file.listFiles()){
+                //非文件夹，并且文件名以jar结尾
                 if (!f.isDirectory() && f.getName().endsWith(AppJointLoader.JAR_SUF_NAME)){
                     try {
                         jars.add(f.toURI().toURL());
@@ -124,7 +129,9 @@ public class AppJointUtils {
                 if (!name1.endsWith(".class")) {
                     continue;
                 }
+                //去掉.class
                 String name2 = name1.substring(0, name1.lastIndexOf(".class"));
+                //将/ 替换成.
                 String name3 = name2.replaceAll("/", ".");
                 fileList.add(name3);
             }
@@ -142,6 +149,7 @@ public class AppJointUtils {
         }
         Class clazz = null;
         try {
+            //使用类加载器加载全类名获取clazz
             clazz = classLoader.loadClass(className);
             //忽略抽象类和接口
             if (Modifier.isAbstract(clazz.getModifiers())) {
@@ -154,6 +162,7 @@ public class AppJointUtils {
             logger.error("className {} can not be instanced", className);
             return false;
         }
+        //最核心的判断https://blog.csdn.net/qq_36666651/article/details/81215221
         return parentClazz.isAssignableFrom(clazz);
     }
 

@@ -79,18 +79,19 @@ public class CommonAppJointLoader implements AppJointLoader{
                 newClassLoader = classLoaders.get(appJointName);
             }
         }
+        //获取类路径的根路径，这里应该是/appcon/Install/DSSInstall/dss-sserver/lib
         URL classpathUrl = oldClassLoader.getResource("");
         logger.info("classpathUrl is {}", classpathUrl.getPath());
         if(null == classpathUrl){
             throw new ErrorException(70059, "classPathUrl is null");
         }
-
-
-
+        //获取appjoint的路径  就是/appcon/Install/DSSInstall/dss-appjoint
+        //感觉这里用相对路径不是很好
         String basePathUrlStr = classpathUrl.getPath() + ".." + File.separator + ".." + File.separator + AppJointLoader.APPJOINT_DIR_NAME;
-
+        //获取到某个appjoin的lib报路径，比如：/appcon/Install/DSSInstall/dss-appjoint/qualitis/lib
         String libPathUrlStr =  basePathUrlStr + File.separator + appJointName +
                 File.separator + AppJointLoader.LIB_NAME;
+        //获取properties文件路径 ，比如：/appcon/Install/DSSInstall/dss-appjoint/qualitis/appjoint.properties
         String propertiesUrlStr = basePathUrlStr + File.separator + appJointName +
                 File.separator + AppJointLoader.PROPERTIES_NAME;
         try{
@@ -100,34 +101,44 @@ public class CommonAppJointLoader implements AppJointLoader{
         }
         URL finalURL = null;
         try {
+            //file：///appcon/Install/DSSInstall/dss-sserver/lib
             finalURL = new URL(AppJointLoader.FILE_SCHEMA + libPathUrlStr + "/*");
         } catch (MalformedURLException e) {
             ExceptionHelper.dealErrorException(70061, libPathUrlStr + " url is wrong", e);
         }
+        //获取lib包下所有的jar包的路径
         List<URL> jars = AppJointUtils.getJarsUrlsOfPath(libPathUrlStr);
         if (newClassLoader == null){
+            //AppJointClassLoader extends URLClassLoader 基本上只是做个super的方法即可，然后将oldClassLoader 设置为parentclassloader
             newClassLoader = new AppJointClassLoader(jars.toArray(new URL[100]) ,oldClassLoader);
         }
         synchronized (classLoaders){
             classLoaders.put(appJointName, newClassLoader);
         }
+        //将当前线程的contextClassLoader设置为newClassLoader  那么当线程回收后，会出问题吗？？
         Thread.currentThread().setContextClassLoader(newClassLoader);
+        //
         String fullClassName = AppJointUtils.getAppJointClassName(appJointName, libPathUrlStr, newClassLoader);
         Class clazz = null;
         try {
+            //加载一下
             clazz = newClassLoader.loadClass(fullClassName);
         } catch (ClassNotFoundException e) {
             ExceptionHelper.dealErrorException(70062, fullClassName + " class not found ", e);
         }
         if (clazz == null){
+            //返回类加载器
             Thread.currentThread().setContextClassLoader(oldClassLoader);
             return null;
         }else{
+            //反射创建对象
             AppJoint retAppjoint = (AppJoint) clazz.newInstance();
             if (StringUtils.isEmpty(baseUrl) && params.get("baseUrl") != null){
                 baseUrl = params.get("baseUrl").toString();
             }
+            //调用init方法
             retAppjoint.init(baseUrl, params);
+            //设置回旧的classCloader
             Thread.currentThread().setContextClassLoader(oldClassLoader);
             synchronized (appJoints){
                 appJoints.put(appJointName, retAppjoint);
