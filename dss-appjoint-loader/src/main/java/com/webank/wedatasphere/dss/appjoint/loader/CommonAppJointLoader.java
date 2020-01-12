@@ -110,6 +110,7 @@ public class CommonAppJointLoader implements AppJointLoader{
         List<URL> jars = AppJointUtils.getJarsUrlsOfPath(libPathUrlStr);
         if (newClassLoader == null){
             //AppJointClassLoader extends URLClassLoader 基本上只是做个super的方法即可，然后将oldClassLoader 设置为parentclassloader
+            //jars都放入类加载器中了，故不会冲突
             newClassLoader = new AppJointClassLoader(jars.toArray(new URL[100]) ,oldClassLoader);
         }
         synchronized (classLoaders){
